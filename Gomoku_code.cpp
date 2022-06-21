@@ -71,15 +71,15 @@ int dont_judge(int cnt, int live, bool isblock, int who) {
 	if (who == people) {
 		if (cnt >= 5 && !isblock) return 1000000;
 		if (isblock) {
-			if (cnt >= 4) return 300;
-			if (cnt == 3 && live == 2) return 200;
-			if (cnt == 3 && live == 1) return 100;
+			if (cnt >= 4) return 100;
+			if (cnt == 3 && live == 2) return 50;
+			if (cnt == 3 && live == 1) return 10;
 			if (cnt == 3 && !live) return 0;
-			if (cnt == 2) return 10;
+			if (cnt == 2) return 5;
 		} else {
-			//if (cnt == 4 && live == 2) return 800;
-			if (cnt == 4 && live == 1) return 1332;
-			if (cnt == 3 && live == 2) return 100;
+			if (cnt == 4 && live == 2) return 1000;
+			if (cnt == 4 && live == 1) return 100;
+			if (cnt == 3 && live == 2) return 99;
 			if (cnt == 3 && live == 1) return 75;
 			if (cnt == 2 && live == 2) return 10;
 			if (cnt == 2 && live == 1) return 2;
@@ -88,17 +88,19 @@ int dont_judge(int cnt, int live, bool isblock, int who) {
 	} else {
 		if (cnt >= 5 && !isblock) return 2000000;
 		if (isblock) {
-			if (cnt >= 4) return 1000;
-			if (cnt == 3 && live == 2) return 500;
-			if (cnt == 3 && live == 1) return 250;
+			if (cnt >= 4 && live == 2) return 999;
+			if (cnt >= 4 && live == 1) return 99;
+			if (cnt >= 4 && live == 0) return 99;
+			if (cnt == 3 && live == 2) return 100;
+			if (cnt == 3 && live == 1) return 50;
 			if (cnt == 3 && !live) return 0;
 			if (cnt == 2) return 10;
 		} else {
 			//if (cnt == 4 && live == 2) cout << "you are going to lose\n";
-			if (cnt == 4 && live == 2) return 5000;
+			if (cnt == 4 && live == 2) return 50000;
 			if (cnt == 4 && live == 1) return 1000;
 			if (cnt == 3 && live == 2) return 999;
-			if (cnt == 3 && live == 1) return 99;
+			if (cnt == 3 && live == 1) return 99; 
 			if (cnt == 2 && live == 2) return 50;
 			if (cnt == 2 && live == 1) return 10;
 			if (cnt == 1 && live == 2) return 3;
@@ -108,26 +110,38 @@ int dont_judge(int cnt, int live, bool isblock, int who) {
 	return 0;
 }
 
-void shorting(int i, int j, int& cnt, int& block, int& live, int who) {
+bool inside(int i, int j) {
+	if (i >= 0 && i < SIZE && j >= 0 && j < SIZE) return true;
+	else return false;
+}
+
+void shorting(int i, int j, int ni, int nj, int& cnt, int& block, int& live, int who) {
 	if (board[i][j] == who) {
 		cnt++; 
-		if (block) block = 2; // we have a block infront
+		if (!inside(ni, nj)) state_val += dont_judge(cnt, live, block, who), cnt = 0, block = 0, live = 0;
 	} else if (board[i][j] == EMPTY) {
-		if (block == 2) { // we have a block inside
-			state_val += dont_judge(cnt, live+1, true, who);
-			block = 0, cnt = 0;
-		} else if (block == 1) { // two blocks can't work
-			state_val += dont_judge(cnt, live+1, false, who);
-			block = 0, cnt = 0;
-		} else if (!block) { // no block infront
-			if (cnt) block = 1; // things infront so we can form a block
-			else live = 1;
+		if (inside(ni, nj)) {
+			if (cnt) {
+				if (board[ni][nj] == who && !block) {
+					state_val += dont_judge(cnt, live, false, who);
+					block = 1; return;
+				}
+				state_val += dont_judge(cnt, live+1, block, who);
+				block = 0, live = 1, cnt = 0;
+			} else live = 1, block = 0; // ..o ..x ...
+		} else {
+			if (cnt) {
+				if (!live && cnt + block >= 5) state_val += dont_judge(cnt, 0, block, who);
+				if (live) state_val += dont_judge(cnt, live, block, who);
+			} cnt = 0, block = 0, live = 0;
 		}
 	} else {
 		if (cnt) {
-			if (block == 1) state_val += dont_judge(cnt, live+1, false, who);
-			else if (block == 2) state_val += dont_judge(cnt, live, true, who); 
-			else state_val += dont_judge(cnt, live, false, who);
+			if (live) {
+				state_val += dont_judge(cnt, live, block, who);		
+			} else {
+				if (cnt + block >= 5) state_val += dont_judge(cnt, live, block, who);
+			}
 		}
 		cnt = 0, live = 0, block = 0;
 	}
@@ -138,12 +152,7 @@ void count_horizontal(int who) {
 	for (int i = 0; i < SIZE; ++i) {
 		int cnt = 0, block = 0, live = 0;
 		for (int j = 0; j < SIZE; ++j) {
-			shorting(i, j, cnt, block, live, who);
-		}
-		if (cnt) {
-			if (block == 1) state_val += dont_judge(cnt, live+1, false, who);
-			else if (block == 2) state_val += dont_judge(cnt, live, true, who);
-			else state_val += dont_judge(cnt, live, false, who);
+			shorting(i, j, i, j+1, cnt, block, live, who);
 		}
 	}
 }
@@ -152,12 +161,7 @@ void count_vertical(int who) {
 	for (int j = 0; j < SIZE; ++j) {
 		int cnt = 0, block = 0, live = 0;
 		for (int i = 0; i < SIZE; ++i) {
-			shorting(i, j, cnt, block, live, who);
-		}
-		if (cnt) {
-			if (block == 1) state_val += dont_judge(cnt, live+1, false, who);
-			else if (block == 2) state_val += dont_judge(cnt, live, true, who);
-			else state_val += dont_judge(cnt, live, false, who);
+			shorting(i, j, i+1, j, cnt, block, live, who);
 		}
 	}
 }
@@ -168,12 +172,7 @@ void count_dia1(int who) {
 		int cnt = 0, block = 0, live = 0;
         for (int i = st; i <= ed; i++) {
             int j = k - i;	
-			shorting(i, j, cnt, block, live, who);
-		}
-		if (cnt) {
-			if (block == 1) state_val += dont_judge(cnt, live+1, false, who);
-			else if (block == 2) state_val += dont_judge(cnt, live+1, true, who);
-			else state_val += dont_judge(cnt, live, false, who);		
+			shorting(i, j, i+1, j-1, cnt, block, live, who);
 		}
 	}
 }
@@ -184,12 +183,7 @@ void count_dia2(int who) {
 		int cnt = 0, block = 0, live = 0;
         for (int i = st; i <= ed; i++) {
             int j = i - k;	
-			shorting(i, j, cnt, block, live, who);
-		}
-		if (cnt) {
-			if (block == 1) state_val += dont_judge(cnt, live+1, false, who);
-			else if (block == 2) state_val += dont_judge(cnt, live+1, true, who);
-			else state_val += dont_judge(cnt, live, false, who);
+			shorting(i, j, i+1, j+1, cnt, block, live, who);
 		}
 	}
 }
@@ -206,17 +200,13 @@ int find_score(int who) {
 node alpha_beta(int depth, int alpha, int beta, int who) {
 	node nownode(-2, -2, who);
 	if (!depth) {
-		/*for (int i = 0; i < SIZE; ++i) {
-			for (int j = 0; j < SIZE; ++j) {
-				cout << board[i][j] << " \n"[j==SIZE-1];
-			}
-		}*/
 		int player_score = find_score(people), computer_score = find_score(computer);
 		nownode.val = player_score - computer_score;
 		//cout << "now : " << nownode.val << " " << player_score << " " << computer_score << "\n\n";
 		return nownode;
 	}
 	vector< pii > next_move = find_next_move();
+	if (depth == 3 && next_move.size()) nownode.x = next_move[0].fi, nownode.y = next_move[0].se;
 	int re_x = next_move[0].fi, re_y = next_move[0].se;
 	if (who == player) {
 		int max_val = -INT_MAX;
@@ -229,7 +219,6 @@ node alpha_beta(int depth, int alpha, int beta, int who) {
 			if (alpha >= beta) break;
 		}
 		nownode.val = max_val, nownode.x = re_x, nownode.y = re_y;
-		return nownode;
 	} else {
 		int min_val = INT_MAX;
 		for (auto it : next_move) {
@@ -241,8 +230,8 @@ node alpha_beta(int depth, int alpha, int beta, int who) {
 			if (alpha >= beta) break;
 		}
 		nownode.val = min_val, nownode.x = re_x, nownode.y = re_y;
-		return nownode;
 	}
+	return nownode;
 }
 
 bool can_win(int& x, int& y) {
@@ -259,11 +248,32 @@ bool can_win(int& x, int& y) {
 	return false;
 }
 
+int flag, tmpv;
+bool live_three(int& x, int& y) {
+	vector< pii > next_move = find_next_move();
+	for (auto it : next_move) {
+		board[it.fi][it.se] = computer;
+		int s = find_score(computer);
+		board[it.fi][it.se] = EMPTY;
+		if (s >= 50000) {
+			//cout << "score : " << s << " " << it.fi << " " << it.se << " hello\n";
+			if (!flag) flag = 1, tmpv = s;
+			else {
+				if (s > tmpv) x = it.fi, y = it.se;
+				return true;
+			}
+			x = it.fi, y = it.se;
+		}
+	}
+	if (flag) return true;
+	return false;
+}
+
 void write_valid_spot(std::ofstream& fout) {
 	int x, y;
 	if (firststep) {
 		if (board[7][7] == EMPTY) x = 7, y = 7;
-		else x = 9, y = 7;
+		else x = 8, y = 8;
 		fout << x << " " << y << "\n";
 		fout.flush();
 		return;
@@ -274,13 +284,19 @@ void write_valid_spot(std::ofstream& fout) {
 		fout.flush();
 		return; 
 	}
-	node ans_node = alpha_beta(1, -INT_MAX, INT_MAX, people);
+	if (live_three(x, y)) {
+		fout << x << " " << y << "\n";
+		fout.flush();
+		return;
+	}
+	node ans_node = alpha_beta(3, -INT_MAX, INT_MAX, people);
 	fout << ans_node.x << " " << ans_node.y << "\n";
 	fout.flush();
 	return;
 }
 
 int main(int, char** argv) {
+	ios::sync_with_stdio(0); cin.tie(0);
     std::ifstream fin(argv[1]);
     std::ofstream fout(argv[2]);
     read_board(fin);
