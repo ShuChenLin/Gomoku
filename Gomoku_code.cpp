@@ -1,9 +1,4 @@
 #include "bits/stdc++.h"
-#include <iostream>
-#include <fstream>
-#include <cstdlib>
-#include <ctime>
-#include <array>
 #define pii pair<int, int>
 #define fi first
 #define se second
